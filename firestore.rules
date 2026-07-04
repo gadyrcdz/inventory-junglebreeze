@@ -1,0 +1,26 @@
+rules_version = '2';
+
+// Reglas básicas para el MVP: cualquiera con el enlace de la app puede leer/escribir
+// los registros de inventario, pero NADIE puede leer/escribir otras colecciones.
+// Esto es aceptable para una app interna de bodega compartida por enlace, pero
+// si más adelante quieres restringirlo solo a tu equipo, activa Firebase Auth
+// (Authentication > Sign-in method > Correo/Google) y cambia "allow read, write: if true"
+// por "allow read, write: if request.auth != null".
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    match /equipos/{equipoId} {
+      allow read: if true;
+      allow write: if true; // solo se usa desde admin.html para cargar/editar el catálogo
+    }
+
+    match /registros/{fecha} {
+      allow read, write: if true;
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

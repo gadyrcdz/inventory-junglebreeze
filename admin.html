@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin · Catálogo de equipos</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header>
+  <div class="wrap">
+    <div class="eyebrow">Brisas de la Jungla · Bodega <a href="index.html">← Volver a la app</a></div>
+    <h1>Administración del catálogo</h1>
+    <div class="sub">Cargar por primera vez o editar la lista de equipos (B001–B030) en Firestore</div>
+  </div>
+</header>
+
+<div class="wrap">
+  <main style="padding-top:16px">
+    <div class="card">
+      <h2>Paso 1 · Cargar catálogo inicial</h2>
+      <p style="font-size:13px; color:var(--text-dim)">
+        Esto escribe los 30 equipos base (tomados del Excel de inventario) en la colección
+        <code>equipos</code> de Firestore. Es seguro ejecutarlo varias veces: si un equipo ya existe,
+        se sobreescribe con estos mismos datos (no borra registros de salida/entrada).
+      </p>
+      <button class="btn-primary" id="btnSembrar">Cargar / actualizar catálogo base (30 equipos)</button>
+      <div class="sync" id="msgSembrar"></div>
+    </div>
+
+    <div class="card">
+      <h2>Paso 2 · Agregar un equipo nuevo</h2>
+      <div class="field" style="margin-bottom:8px">
+        <label>Código de equipo (ej. B031)</label>
+        <input type="text" id="nuevoEquipo" placeholder="B031">
+      </div>
+      <div class="field" style="margin-bottom:8px">
+        <label>Código completo de pechera</label>
+        <input type="text" id="nuevoPechera" placeholder="24CUV003E0299">
+      </div>
+      <div class="field" style="margin-bottom:8px">
+        <label>Casco (opcional)</label>
+        <input type="text" id="nuevoCasco" placeholder="GALEOR EVO (SP-C008)">
+      </div>
+      <button class="btn-outline-green" style="width:100%" id="btnAgregarEquipo">Agregar equipo</button>
+      <div class="sync" id="msgAgregar"></div>
+    </div>
+
+    <div class="card">
+      <h2>Catálogo actual en Firestore</h2>
+      <div id="tablaEquipos"><div class="empty">Cargando…</div></div>
+    </div>
+  </main>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script type="module">
+  import { firebaseConfig } from './firebase-config.js';
+  import { EQUIPOS_BASE } from './equipos-catalogo.js';
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-app.js";
+  import {
+    getFirestore, doc, setDoc, collection, getDocs, orderBy, query
+  } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore.js";
+
+  const app = initializeApp(firebaseConfig);
+  const db = getFirestore(app);
+
+  function toast(msg){
+    const t = document.getElementById('toast');
+    t.textContent = msg; t.classList.add('show');
+    setTimeout(()=>t.classList.remove('show'), 2000);
+  }
+
+  async function cargarTabla(){
+    const cont = document.getElementById('tablaEquipos');
+    try{
+      const snap = await getDocs(query(collection(db, 'equipos'), orderBy('equipo')));
+      if(snap.empty){ cont.innerHTML = '<div class="empty">Aún no hay equipos cargados. Usa el paso 1.</div>'; return; }
+      let rows = '';
+      snap.forEach(d=>{
+        const e = d.data();
+        rows += `<tr><td>${e.equipo}</td><td>${e.last4}</td><td>${e.casco||'—'}</td></tr>`;
+      });
+      cont.innerHTML = `<table class="admin-table"><thead><tr><th>Equipo</th><th>Pechera (últ. 4)</th><th>Casco</th></tr></thead><tbody>${rows}</tbody></table>`;
+    }catch(e){
+      cont.innerHTML = '<div class="empty">No se pudo conectar a Firestore. Revisa firebase-config.js.</div>';
+    }
+  }
+
+  document.getElementById('btnSembrar').addEventListener('click', async ()=>{
+    const msg = document.getElementById('msgSembrar');
+    msg.textContent = 'Cargando…';
+    try{
+      for(const e of EQUIPOS_BASE){
+        await setDoc(doc(db, 'equipos', e.equipo), e);
+      }
+      msg.textContent = 'Catálogo cargado ✓ (' + EQUIPOS_BASE.length + ' equipos)';
+      toast('Catálogo base cargado correctamente');
+      cargarTabla();
+    }catch(e){
+      msg.textContent = 'Error: ' + e.message;
+    }
+  });
+
+  document.getElementById('btnAgregarEquipo').addEventListener('click', async ()=>{
+    const equipo = document.getElementById('nuevoEquipo').value.trim().toUpperCase();
+    const pechera = document.getElementById('nuevoPechera').value.trim();
+    const casco = document.getElementById('nuevoCasco').value.trim();
+    const msg = document.getElementById('msgAgregar');
+    if(!equipo || !pechera){ msg.textContent = 'Completa al menos el código de equipo y la pechera.'; return; }
+    try{
+      await setDoc(doc(db, 'equipos', equipo), { equipo, pechera, last4: pechera.slice(-4), casco });
+      msg.textContent = 'Equipo ' + equipo + ' agregado ✓';
+      document.getElementById('nuevoEquipo').value='';
+      document.getElementById('nuevoPechera').value='';
+      document.getElementById('nuevoCasco').value='';
+      toast('Equipo agregado');
+      cargarTabla();
+    }catch(e){
+      msg.textContent = 'Error: ' + e.message;
+    }
+  });
+
+  cargarTabla();
+</script>
+</body>
+</html>

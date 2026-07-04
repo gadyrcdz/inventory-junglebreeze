@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Control de Equipos — Brisas de la Jungla</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#101913">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <div class="eyebrow">Brisas de la Jungla · Bodega <a href="admin.html">Admin</a></div>
+    <h1>Control de Equipos</h1>
+    <div class="sub">Registro de salida y entrada de equipo de canopy por operación</div>
+    <div class="field-row">
+      <div class="field">
+        <label>Fecha de operación</label>
+        <input type="date" id="fecha">
+      </div>
+      <div class="field">
+        <label>Guía / Encargado</label>
+        <input type="text" id="operador" placeholder="Nombre">
+      </div>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+  <div class="tabs">
+    <div class="tab active" data-tab="salida">Salida</div>
+    <div class="tab" data-tab="entrada">Entrada<span class="badge" id="badgePend" style="display:none"></span></div>
+    <div class="tab" data-tab="historial">Historial</div>
+  </div>
+
+  <main>
+    <div class="summary">
+      <div class="stat fuera"><div class="n" id="stFuera">0</div><div class="l">En uso</div></div>
+      <div class="stat dentro"><div class="n" id="stDentro">0</div><div class="l">Devueltos</div></div>
+      <div class="stat pend"><div class="n" id="stPend">0</div><div class="l">Pendientes</div></div>
+    </div>
+
+    <div id="panel-salida">
+      <div class="card">
+        <h2>Registrar salida de equipo</h2>
+        <select id="selectEquipo"><option value="">Cargando catálogo…</option></select>
+        <button class="btn-primary" id="btnAgregar">Agregar a la salida de hoy</button>
+      </div>
+      <div class="card">
+        <h2>Equipo que salió hoy</h2>
+        <div id="listaSalida"><div class="empty">Todavía no se ha registrado ningún equipo.</div></div>
+      </div>
+    </div>
+
+    <div id="panel-entrada" style="display:none">
+      <div class="card">
+        <h2>Pendientes de entrada</h2>
+        <div id="listaPendientes"><div class="empty">No hay equipo pendiente por entrar.</div></div>
+      </div>
+      <div class="card">
+        <h2>Ya devueltos</h2>
+        <div id="listaDevueltos"><div class="empty">Ningún equipo devuelto todavía.</div></div>
+      </div>
+      <button class="btn-danger" id="btnCerrarDia" style="width:100%">Cerrar día de operación</button>
+    </div>
+
+    <div id="panel-historial" style="display:none">
+      <div class="card">
+        <h2>Días registrados</h2>
+        <button class="btn-outline-green btn-small" id="btnExportar" style="margin-bottom:10px">Exportar historial a Excel</button>
+        <div id="listaHistorial"><div class="empty">Cargando historial…</div></div>
+      </div>
+    </div>
+  </main>
+
+  <div class="footer-note">
+    Los datos se guardan en Firebase: cualquier persona que abra este mismo enlace en su celular ve y actualiza el mismo registro del día, en tiempo real.
+  </div>
+  <div class="sync" id="syncMsg"></div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script type="module" src="app.js"></script>
+</body>
+</html>
