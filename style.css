@@ -130,3 +130,18 @@ button{
 table.admin-table{width:100%; border-collapse:collapse; font-size:12px;}
 table.admin-table th, table.admin-table td{border-bottom:1px solid var(--line); padding:6px 4px; text-align:left;}
 table.admin-table th{color:var(--text-dim); font-weight:600; text-transform:uppercase; font-size:10px;}
+
+input[type="date"],
+input[type="text"]{
+    appearance: none;
+    -webkit-appearance: none;
+    border-radius: 10px;
+    height: 52px;
+    padding: 0 14px;
+    font-size: 16px;
+    line-height: 52px;
+}
+
+input[type="date"]::-webkit-date-and-time-value{
+    text-align: center;
+}
