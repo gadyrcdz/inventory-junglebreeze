@@ -1,8 +1,8 @@
 import { firebaseConfig } from './firebase-config.js';
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-app.js";
 import {
-  getFirestore, doc, documentId, getDoc, setDoc, updateDoc, collection, getDocs,
-  onSnapshot, query, orderBy, enableIndexedDbPersistence, arrayUnion, arrayRemove
+  getFirestore, doc, getDoc, setDoc, updateDoc, collection, getDocs,
+  onSnapshot, query, orderBy, documentId, enableIndexedDbPersistence, arrayUnion, arrayRemove
 } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore.js";
 
 const app = initializeApp(firebaseConfig);
@@ -11,6 +11,7 @@ try { enableIndexedDbPersistence(db); } catch (e) { /* multi-tab open or unsuppo
 
 let EQUIPOS = [];
 let byLast4 = {};
+let byEquipo = {};
 let state = { fecha: todayStr(), operador: '', salida: [], entrada: [], cerrado: false };
 let unsubscribeDia = null;
 
@@ -31,6 +32,7 @@ async function cargarCatalogo(){
   EQUIPOS = [];
   snap.forEach(d => EQUIPOS.push(d.data()));
   byLast4 = Object.fromEntries(EQUIPOS.map(e => [e.last4, e]));
+  byEquipo = Object.fromEntries(EQUIPOS.map(e => [e.equipo, e]));
   if(EQUIPOS.length === 0){
     document.getElementById('selectEquipo').innerHTML =
       '<option value="">Sin equipos cargados. Ve a Admin y carga el catálogo.</option>';
@@ -87,7 +89,19 @@ async function agregarSalida(){
     toast(eq.equipo + ' ya está registrado en la salida de hoy.');
     return;
   }
-  const entrada = { equipo: eq.equipo, last4: eq.last4, hora: new Date().toLocaleTimeString('es-CR',{hour:'2-digit',minute:'2-digit'}) };
+  const entrada = {
+    equipo: eq.equipo,
+    last4: eq.last4,
+    pechera: eq.pechera || '',
+    l24: eq.l24 || '',
+    l12: eq.l12 || '',
+    l48: eq.l48 || '',
+    mosA: eq.mosA || '',
+    mosAl: eq.mosAl || '',
+    arnes: eq.arnes || '',
+    casco: eq.casco || '',
+    hora: new Date().toLocaleTimeString('es-CR',{hour:'2-digit',minute:'2-digit'})
+  };
   await setDoc(regRef(state.fecha), { salida: arrayUnion(entrada) }, { merge: true });
   toast('Equipo ' + eq.equipo + ' (' + eq.last4 + ') registrado en salida.');
 }
@@ -145,13 +159,14 @@ function render(){
     listaSalida.innerHTML = state.salida.slice().reverse().map(s=>{
       const dev = state.entrada.find(e=>e.equipo===s.equipo);
       return `<div class="equipo-row">
-        <span class="equipo-id">${s.equipo}</span>
+        <button class="equipo-id-btn" data-detalle="${s.equipo}">${s.equipo}</button>
         <div class="equipo-meta"><div class="p4">Pechera ${s.last4} · salió ${s.hora}</div></div>
         <span class="estado ${dev?'dentro':'fuera'}">${dev?'Devuelto':'En uso'}</span>
         ${dev?'':`<button class="btn-ghost btn-small" data-quitar="${s.equipo}">Quitar</button>`}
       </div>`;
     }).join('');
     listaSalida.querySelectorAll('[data-quitar]').forEach(b=>b.addEventListener('click', ()=>quitarSalida(b.dataset.quitar)));
+    listaSalida.querySelectorAll('[data-detalle]').forEach(b=>b.addEventListener('click', ()=>mostrarDetalle(b.dataset.detalle)));
   }
 
   const listaPend = document.getElementById('listaPendientes');
@@ -160,11 +175,12 @@ function render(){
   } else {
     listaPend.innerHTML = fuera.map(s=>`
       <div class="equipo-row">
-        <span class="equipo-id">${s.equipo}</span>
+        <button class="equipo-id-btn" data-detalle="${s.equipo}">${s.equipo}</button>
         <div class="equipo-meta"><div class="p4">Pechera ${s.last4} · salió ${s.hora}</div></div>
         <button class="btn-primary btn-small" style="width:auto" data-entrar="${s.equipo}">Marcar entrada</button>
       </div>`).join('');
     listaPend.querySelectorAll('[data-entrar]').forEach(b=>b.addEventListener('click', ()=>marcarEntrada(b.dataset.entrar)));
+    listaPend.querySelectorAll('[data-detalle]').forEach(b=>b.addEventListener('click', ()=>mostrarDetalle(b.dataset.detalle)));
   }
 
   const listaDev = document.getElementById('listaDevueltos');
@@ -174,13 +190,45 @@ function render(){
     listaDev.innerHTML = dentro.map(s=>{
       const e = state.entrada.find(x=>x.equipo===s.equipo);
       return `<div class="equipo-row">
-        <span class="equipo-id">${s.equipo}</span>
+        <button class="equipo-id-btn" data-detalle="${s.equipo}">${s.equipo}</button>
         <div class="equipo-meta"><div class="p4">Pechera ${s.last4} · entró ${e.hora}</div></div>
         <button class="btn-ghost btn-small" data-deshacer="${s.equipo}">Deshacer</button>
       </div>`;
     }).join('');
     listaDev.querySelectorAll('[data-deshacer]').forEach(b=>b.addEventListener('click', ()=>desmarcarEntrada(b.dataset.deshacer)));
+    listaDev.querySelectorAll('[data-detalle]').forEach(b=>b.addEventListener('click', ()=>mostrarDetalle(b.dataset.detalle)));
   }
+}
+
+const CAMPOS_DETALLE = [
+  ['pechera', 'Pechera (código completo)'],
+  ['last4', 'Últimos 4 dígitos'],
+  ['l24', 'Línea 24'],
+  ['l12', 'Línea 12'],
+  ['l48', 'Línea 48'],
+  ['mosA', 'Mosquetón acero'],
+  ['mosAl', 'Mosquetón aluminio'],
+  ['arnes', 'Arnés'],
+  ['casco', 'Casco']
+];
+
+function mostrarDetalle(equipoCode){
+  // Prioriza los datos guardados en el registro de hoy (snapshot histórico);
+  // si faltan (registros viejos), completa con el catálogo actual.
+  const enSalida = state.salida.find(s=>s.equipo===equipoCode) || {};
+  const delCatalogo = byEquipo[equipoCode] || {};
+  const detalle = { ...delCatalogo, ...enSalida };
+
+  document.getElementById('modalTitulo').textContent = 'Equipo ' + equipoCode;
+  document.getElementById('modalContenido').innerHTML = CAMPOS_DETALLE.map(([key, label])=>{
+    const val = detalle[key];
+    return `<div class="detalle-row"><span class="k">${label}</span><span class="v">${val ? val : '—'}</span></div>`;
+  }).join('');
+  document.getElementById('modalDetalle').classList.remove('hidden');
+}
+
+function cerrarModal(){
+  document.getElementById('modalDetalle').classList.add('hidden');
 }
 
 function switchTab(tab){
@@ -230,11 +278,22 @@ function exportarExcel(){
   historialCache.forEach(d=>{
     (d.salida||[]).forEach(s=>{
       const e = (d.entrada||[]).find(x=>x.equipo===s.equipo);
+      // Completa con el catálogo actual cualquier dato que el registro histórico no tenga guardado
+      // (por ejemplo, registros creados antes de guardar el detalle completo).
+      const full = { ...(byEquipo[s.equipo]||{}), ...s };
       filas.push({
         Fecha: d.fecha,
         Encargado: d.operador || '',
-        Equipo: s.equipo,
-        'Pechera (4 díg.)': s.last4,
+        Equipo: full.equipo,
+        'Pechera completa': full.pechera || '',
+        'Pechera (4 díg.)': full.last4 || '',
+        'Línea 24': full.l24 || '',
+        'Línea 12': full.l12 || '',
+        'Línea 48': full.l48 || '',
+        'Mosquetón acero': full.mosA || '',
+        'Mosquetón aluminio': full.mosAl || '',
+        'Arnés': full.arnes || '',
+        'Casco': full.casco || '',
         'Hora salida': s.hora,
         'Hora entrada': e ? e.hora : '',
         Estado: e ? 'Devuelto' : 'Pendiente',
@@ -254,6 +313,8 @@ document.getElementById('btnCerrarDia').addEventListener('click', cerrarDia);
 document.getElementById('btnExportar').addEventListener('click', exportarExcel);
 document.getElementById('fecha').addEventListener('change', e=> suscribirDia(e.target.value));
 document.getElementById('operador').addEventListener('change', e=> guardarOperador(e.target.value));
+document.getElementById('modalCerrar').addEventListener('click', cerrarModal);
+document.getElementById('modalDetalle').addEventListener('click', e=>{ if(e.target.id==='modalDetalle') cerrarModal(); });
 
 document.getElementById('fecha').value = todayStr();
 cargarCatalogo().then(()=> suscribirDia(todayStr()));
@@ -261,3 +322,4 @@ cargarCatalogo().then(()=> suscribirDia(todayStr()));
 if('serviceWorker' in navigator){
   window.addEventListener('load', ()=> navigator.serviceWorker.register('sw.js').catch(()=>{}));
 }
+

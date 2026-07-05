@@ -38,6 +38,32 @@
         <label>Código completo de pechera</label>
         <input type="text" id="nuevoPechera" placeholder="24CUV003E0299">
       </div>
+      <div class="field-row" style="margin-bottom:8px">
+        <div class="field">
+          <label>Línea 24</label>
+          <input type="text" id="nuevoL24" placeholder="086A117">
+        </div>
+        <div class="field">
+          <label>Línea 12</label>
+          <input type="text" id="nuevoL12" placeholder="087G109">
+        </div>
+      </div>
+      <div class="field" style="margin-bottom:8px">
+        <label>Línea 48</label>
+        <input type="text" id="nuevoL48" placeholder="087A107">
+      </div>
+      <div class="field" style="margin-bottom:8px">
+        <label>Mosquetón acero</label>
+        <input type="text" id="nuevoMosA" placeholder="MS2T22ZRC043J0347 / EN362:2004/B">
+      </div>
+      <div class="field" style="margin-bottom:8px">
+        <label>Mosquetón aluminio</label>
+        <input type="text" id="nuevoMosAl" placeholder="4345">
+      </div>
+      <div class="field" style="margin-bottom:8px">
+        <label>Arnés (opcional)</label>
+        <input type="text" id="nuevoArnes" placeholder="24CUS021B0723">
+      </div>
       <div class="field" style="margin-bottom:8px">
         <label>Casco (opcional)</label>
         <input type="text" id="nuevoCasco" placeholder="GALEOR EVO (SP-C008)">
@@ -48,6 +74,7 @@
 
     <div class="card">
       <h2>Catálogo actual en Firestore</h2>
+      <p style="font-size:12px; color:var(--text-dim)">Toca un equipo para editarlo.</p>
       <div id="tablaEquipos"><div class="empty">Cargando…</div></div>
     </div>
   </main>
@@ -72,20 +99,42 @@
     setTimeout(()=>t.classList.remove('show'), 2000);
   }
 
+  let catalogoCache = {};
+
   async function cargarTabla(){
     const cont = document.getElementById('tablaEquipos');
     try{
       const snap = await getDocs(query(collection(db, 'equipos'), orderBy('equipo')));
       if(snap.empty){ cont.innerHTML = '<div class="empty">Aún no hay equipos cargados. Usa el paso 1.</div>'; return; }
+      catalogoCache = {};
       let rows = '';
       snap.forEach(d=>{
         const e = d.data();
-        rows += `<tr><td>${e.equipo}</td><td>${e.last4}</td><td>${e.casco||'—'}</td></tr>`;
+        catalogoCache[e.equipo] = e;
+        rows += `<tr data-editar="${e.equipo}" style="cursor:pointer"><td>${e.equipo}</td><td>${e.last4||''}</td><td>${e.casco||'—'}</td></tr>`;
       });
       cont.innerHTML = `<table class="admin-table"><thead><tr><th>Equipo</th><th>Pechera (últ. 4)</th><th>Casco</th></tr></thead><tbody>${rows}</tbody></table>`;
+      cont.querySelectorAll('[data-editar]').forEach(tr=>{
+        tr.addEventListener('click', ()=> cargarEnFormulario(catalogoCache[tr.dataset.editar]));
+      });
     }catch(e){
       cont.innerHTML = '<div class="empty">No se pudo conectar a Firestore. Revisa firebase-config.js.</div>';
     }
+  }
+
+  function cargarEnFormulario(e){
+    document.getElementById('nuevoEquipo').value = e.equipo || '';
+    document.getElementById('nuevoPechera').value = e.pechera || '';
+    document.getElementById('nuevoL24').value = e.l24 || '';
+    document.getElementById('nuevoL12').value = e.l12 || '';
+    document.getElementById('nuevoL48').value = e.l48 || '';
+    document.getElementById('nuevoMosA').value = e.mosA || '';
+    document.getElementById('nuevoMosAl').value = e.mosAl || '';
+    document.getElementById('nuevoArnes').value = e.arnes || '';
+    document.getElementById('nuevoCasco').value = e.casco || '';
+    document.getElementById('btnAgregarEquipo').textContent = 'Guardar cambios en ' + e.equipo;
+    window.scrollTo({top:0, behavior:'smooth'});
+    toast('Editando ' + e.equipo + ' — cambia lo que necesites y guarda.');
   }
 
   document.getElementById('btnSembrar').addEventListener('click', async ()=>{
@@ -106,16 +155,24 @@
   document.getElementById('btnAgregarEquipo').addEventListener('click', async ()=>{
     const equipo = document.getElementById('nuevoEquipo').value.trim().toUpperCase();
     const pechera = document.getElementById('nuevoPechera').value.trim();
+    const l24 = document.getElementById('nuevoL24').value.trim();
+    const l12 = document.getElementById('nuevoL12').value.trim();
+    const l48 = document.getElementById('nuevoL48').value.trim();
+    const mosA = document.getElementById('nuevoMosA').value.trim();
+    const mosAl = document.getElementById('nuevoMosAl').value.trim();
+    const arnes = document.getElementById('nuevoArnes').value.trim();
     const casco = document.getElementById('nuevoCasco').value.trim();
     const msg = document.getElementById('msgAgregar');
     if(!equipo || !pechera){ msg.textContent = 'Completa al menos el código de equipo y la pechera.'; return; }
     try{
-      await setDoc(doc(db, 'equipos', equipo), { equipo, pechera, last4: pechera.slice(-4), casco });
-      msg.textContent = 'Equipo ' + equipo + ' agregado ✓';
-      document.getElementById('nuevoEquipo').value='';
-      document.getElementById('nuevoPechera').value='';
-      document.getElementById('nuevoCasco').value='';
-      toast('Equipo agregado');
+      await setDoc(doc(db, 'equipos', equipo), {
+        equipo, pechera, last4: pechera.slice(-4), l24, l12, l48, mosA, mosAl, arnes, casco
+      });
+      msg.textContent = 'Equipo ' + equipo + ' guardado ✓';
+      ['nuevoEquipo','nuevoPechera','nuevoL24','nuevoL12','nuevoL48','nuevoMosA','nuevoMosAl','nuevoArnes','nuevoCasco']
+        .forEach(id => document.getElementById(id).value = '');
+      document.getElementById('btnAgregarEquipo').textContent = 'Agregar equipo';
+      toast('Equipo guardado');
       cargarTabla();
     }catch(e){
       msg.textContent = 'Error: ' + e.message;

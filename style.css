@@ -127,6 +127,31 @@ button{
 .sync{font-size:10px; color:var(--text-dim); text-align:center; padding:10px 0 0; min-height:14px;}
 .footer-note{font-size:11px; color:var(--text-dim); text-align:center; padding:16px 20px 0; line-height:1.5;}
 
+.equipo-id-btn{
+  font-family:var(--mono); font-weight:800; font-size:14px; color:var(--text);
+  background:var(--panel-2); padding:3px 8px; border-radius:6px; border:1px solid var(--line);
+  cursor:pointer;
+}
+.equipo-id-btn:active{background:var(--green-deep); color:#fff;}
+
+.modal-overlay{
+  position:fixed; inset:0; background:rgba(6,10,7,.72); z-index:60;
+  display:flex; align-items:flex-end; justify-content:center;
+}
+.modal-overlay.hidden{display:none;}
+.modal-box{
+  width:100%; max-width:560px; background:var(--panel); border:1px solid var(--line);
+  border-top-left-radius:16px; border-top-right-radius:16px; padding:18px 16px 22px;
+  max-height:80vh; overflow-y:auto;
+}
+.modal-box .modal-head{display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;}
+.modal-box .modal-head h3{margin:0; font-size:16px;}
+.modal-box .modal-close{background:transparent; border:none; color:var(--text-dim); font-size:20px; padding:2px 8px;}
+.detalle-row{display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid var(--line); font-size:13px; gap:10px;}
+.detalle-row:last-child{border-bottom:none;}
+.detalle-row .k{color:var(--text-dim);}
+.detalle-row .v{font-family:var(--mono); text-align:right; word-break:break-all;}
+
 table.admin-table{width:100%; border-collapse:collapse; font-size:12px;}
 table.admin-table th, table.admin-table td{border-bottom:1px solid var(--line); padding:6px 4px; text-align:left;}
 table.admin-table th{color:var(--text-dim); font-weight:600; text-transform:uppercase; font-size:10px;}
