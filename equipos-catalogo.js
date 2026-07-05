@@ -1,7 +1,4 @@
-// Catálogo base de equipos, tomado de INVENTARIO_DE_BODEGA.xlsx (hoja "Lista de Equipos").
-// Esto se usa una sola vez para "sembrar" la colección `equipos` en Firestore desde admin.html.
-// Una vez sembrado, la app lee siempre desde Firestore (así puedes agregar/editar equipos
-// desde admin.html sin tocar código).
+
 export const EQUIPOS_BASE = [
   {equipo:"B001", pechera:"24CUV00B50153", l24:"086A117", l12:"087G109", l48:"087A107", mosA:"MS2T22ZRC043J0347", mosAl:"4345", arnes:"24CUS021B0723", casco:"GALEOR EVO (SP-C008)"},
   {equipo:"B002", pechera:"24CUV003E02245", l24:"089A117", l12:"069G109", l48:"082A117", mosA:"MS2T22ZRC043J0340", mosAl:"4254", arnes:"24CUS021B0739", casco:"GALEOR EVO (SP-C008)"},
